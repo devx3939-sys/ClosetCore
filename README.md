@@ -299,3 +299,4 @@ From [APP_PLAN.md](APP_PLAN.md), Phase 2/3:
 - Background removal in item photos
 
 The data model and UI hooks are designed to accommodate these — they're additive from here.
+# ClosetCore
