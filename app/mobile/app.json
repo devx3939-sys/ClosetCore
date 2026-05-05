@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "ClosetCore",
+    "slug": "closetcore",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "closetcore",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.closetcore.mobile"
+    },
+    "android": {
+      "package": "app.closetcore.mobile"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow ClosetCore to access your photos so you can add items to your wardrobe."
+        }
+      ]
+    ],
+    "extra": {
+      "supabaseUrl": "$EXPO_PUBLIC_SUPABASE_URL",
+      "supabaseAnonKey": "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
+    }
+  }
+}
