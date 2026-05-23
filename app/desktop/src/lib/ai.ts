@@ -223,8 +223,10 @@ export const ai = {
       count: input.count,
     }),
   getUsage: () => getUsageCached(),
-  startCheckout: (input: { plan: 'pro' | 'lifetime'; return_url: string }) =>
+  startCheckout: (input: { plan: 'pro'; return_url: string }) =>
     invoke<{ url: string }>('create-checkout-session', input),
+  openCustomerPortal: (input: { return_url: string }) =>
+    invoke<{ url: string }>('create-portal-session', input),
   suggestOutfits: (items: ClosetItem[], opts: SuggestOptions = {}) =>
     invoke<OutfitSuggestionResult>('suggest-outfits', {
       items: items.map((i) => ({

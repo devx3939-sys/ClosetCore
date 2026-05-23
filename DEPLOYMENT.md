@@ -139,7 +139,7 @@ The "Find better photo online" feature uses DuckDuckGo image search, which doesn
 
 ---
 
-## 6. Deploy the 9 edge functions
+## 6. Deploy the 10 edge functions
 
 ```powershell
 cd "c:/Users/Xavier/Desktop/Closet App"
@@ -152,10 +152,13 @@ supabase functions deploy suggest-outfits
 supabase functions deploy find-item-image
 supabase functions deploy get-usage
 supabase functions deploy create-checkout-session
-supabase functions deploy stripe-webhook
+supabase functions deploy create-portal-session
+supabase functions deploy stripe-webhook --no-verify-jwt
 ```
 
-Each command takes 5–15 seconds. After the last one, confirm in Supabase: **Dashboard → Edge Functions** — you should see all 9 listed, all green.
+Each command takes 5–15 seconds. After the last one, confirm in Supabase: **Dashboard → Edge Functions** — you should see all 10 listed, all green.
+
+> `stripe-webhook` requires `--no-verify-jwt` because Stripe doesn't send a JWT auth header (it uses its own `stripe-signature` header instead). The setting is also persisted in [`supabase/config.toml`](supabase/config.toml).
 
 > The last two (`create-checkout-session`, `stripe-webhook`) are stubs that return a "not configured" error until you wire up Stripe. See [PLANS.md](PLANS.md) for the integration steps.
 

@@ -8,6 +8,7 @@ import {
   Layers,
   Palette,
   User,
+  CreditCard,
   Menu,
   X,
   type LucideProps,
@@ -24,6 +25,7 @@ const NAV: {
   { href: '/dashboard/outfits', label: 'Outfits', Icon: Layers },
   { href: '/dashboard/palette', label: 'Color Palette', Icon: Palette },
   { href: '/dashboard/profile', label: 'Profile', Icon: User },
+  { href: '/dashboard/subscription', label: 'Subscription', Icon: CreditCard },
 ];
 
 export default function DashboardShell({

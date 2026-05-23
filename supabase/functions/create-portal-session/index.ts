@@ -1,10 +1,23 @@
-// supabase/functions/create-checkout-session/index.ts
+// POST /functions/v1/create-portal-session
+// Body: { return_url: string }
+// Returns: { url: string } — Stripe Customer Portal redirect URL
+//
+// Opens Stripe's hosted Customer Portal where the user can:
+//   - Cancel their subscription (including during the trial)
+//   - Update payment method
+//   - View past invoices and billing history
+//   - Change billing email
+//
+// One-time Stripe setup needed before this works: visit
+//   https://dashboard.stripe.com/test/settings/billing/portal
+// and click "Save changes" to create a default portal configuration. See
+// STRIPE.md → Customer Portal section.
+
 import Stripe from 'https://esm.sh/stripe@17.4.0?target=denonext';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeaders } from '../_shared/cors.ts';
 
 const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
-const PRO_PRICE = Deno.env.get('STRIPE_PRICE_PRO_MONTHLY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -15,13 +28,17 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
 });
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
   try {
-    if (!STRIPE_KEY || !PRO_PRICE) {
-      return json(503, { error: 'Stripe not configured. See STRIPE.md.' });
+    if (!STRIPE_KEY) {
+      return json(503, {
+        error: 'Stripe not configured. Set STRIPE_SECRET_KEY. See STRIPE.md.',
+      });
     }
 
-    // 1. Auth
+    // 1. Auth via JWT (same pattern as create-checkout-session).
     const auth = req.headers.get('authorization') ?? '';
     const jwt = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7) : '';
     if (!jwt) return json(401, { error: 'Sign in required.' });
@@ -31,48 +48,36 @@ Deno.serve(async (req) => {
     const { data: u } = await userClient.auth.getUser();
     if (!u?.user) return json(401, { error: 'Invalid session.' });
     const userId = u.user.id;
-    const userEmail = u.user.email ?? '';
 
     // 2. Body
     const { return_url } = (await req.json()) as { return_url: string };
     if (!return_url) return json(400, { error: 'return_url is required' });
 
-    // 3. Resolve / create the Stripe customer
+    // 3. Look up Stripe customer ID. If the user never started checkout,
+    // there's nothing to manage — surface a clear error.
     const { data: profile } = await admin
       .from('profiles')
       .select('stripe_customer_id')
       .eq('id', userId)
       .maybeSingle();
-    let customerId = profile?.stripe_customer_id;
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: userEmail,
-        metadata: { user_id: userId },
+    if (!profile?.stripe_customer_id) {
+      return json(404, {
+        error:
+          "You don't have a subscription yet. Start a Pro trial from your profile first.",
       });
-      customerId = customer.id;
-      await admin
-        .from('profiles')
-        .update({ stripe_customer_id: customerId })
-        .eq('id', userId);
     }
 
-    // 4. Create the checkout session — 14-day trial, no card required
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      mode: 'subscription',
-      line_items: [{ price: PRO_PRICE, quantity: 1 }],
-      subscription_data: { trial_period_days: 14 },
-      payment_method_collection: 'if_required',
-      success_url: `${return_url}?status=success`,
-      cancel_url: `${return_url}?status=cancel`,
-      client_reference_id: userId,
-      metadata: { user_id: userId },
+    // 4. Create the portal session.
+    const session = await stripe.billingPortal.sessions.create({
+      customer: profile.stripe_customer_id,
+      return_url,
     });
 
     return json(200, { url: session.url });
   } catch (e) {
+    // Stripe will throw a clear error if the portal isn't configured.
     return json(500, {
-      error: e instanceof Error ? e.message : 'create-checkout-session failed',
+      error: e instanceof Error ? e.message : 'create-portal-session failed',
     });
   }
 });

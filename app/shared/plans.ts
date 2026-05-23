@@ -1,7 +1,7 @@
 // Plan limits — client-side mirror of `supabase/functions/_shared/plans.ts`.
 // IMPORTANT: keep both files in sync.
 
-export type Plan = 'free' | 'pro' | 'lifetime';
+export type Plan = 'free' | 'pro';
 
 export type PeriodType = 'month' | 'all';
 
@@ -37,20 +37,11 @@ export const PLAN_LIMITS: Record<Plan, Record<Feature, FeatureLimit>> = {
     suggest_outfits:  { period: 'month', limit: 100 },
     find_item_image:  { period: 'month', limit: UNLIMITED },
   },
-  lifetime: {
-    analyze_item:     { period: 'month', limit: 200 },
-    analyze_outfit:   { period: 'month', limit: 100 },
-    analyze_closet:   { period: 'month', limit: 20 },
-    analyze_palette:  { period: 'month', limit: 10 },
-    suggest_outfits:  { period: 'month', limit: 100 },
-    find_item_image:  { period: 'month', limit: UNLIMITED },
-  },
 };
 
 export const ITEM_LIMITS: Record<Plan, number> = {
   free: 30,
   pro: UNLIMITED,
-  lifetime: UNLIMITED,
 };
 
 export const FEATURE_LABELS: Record<Feature, string> = {
@@ -87,9 +78,7 @@ export function usageFraction(used: number, limit: number): number {
 export function effectivePlan(profile: {
   plan?: string | null;
   plan_period_end?: string | null;
-  lifetime_purchased_at?: string | null;
 }): Plan {
-  if (profile.lifetime_purchased_at) return 'lifetime';
   if (
     profile.plan === 'pro' &&
     (!profile.plan_period_end || new Date(profile.plan_period_end) > new Date())
@@ -102,5 +91,4 @@ export function effectivePlan(profile: {
 export const PLAN_LABELS: Record<Plan, string> = {
   free: 'Free',
   pro: 'Pro',
-  lifetime: 'Lifetime',
 };

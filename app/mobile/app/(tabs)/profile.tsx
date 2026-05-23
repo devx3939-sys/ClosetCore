@@ -7,10 +7,8 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
-  Linking,
-  Alert,
 } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { ai } from '../../lib/ai';
@@ -26,6 +24,7 @@ import {
 import type { Profile, UsageReport } from '@shared/types';
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [email, setEmail] = useState<string>('');
   const [name, setName] = useState('');
@@ -34,7 +33,6 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
-  const [upgrading, setUpgrading] = useState<Plan | null>(null);
 
   const plan: Plan = effectivePlan(profile ?? {});
 
@@ -96,23 +94,7 @@ export default function ProfileScreen() {
     setBusy(false);
   }
 
-  async function upgrade(target: 'pro' | 'lifetime') {
-    setUpgrading(target);
-    try {
-      const { url } = await ai.startCheckout({
-        plan: target,
-        return_url: 'closetapp://profile',
-      });
-      await Linking.openURL(url);
-    } catch (e) {
-      Alert.alert(
-        'Upgrade unavailable',
-        e instanceof Error ? e.message : 'Try again later.'
-      );
-    } finally {
-      setUpgrading(null);
-    }
-  }
+  // Plan upgrades / cancellation live on /subscription now.
 
   if (loading) {
     return (
@@ -199,38 +181,22 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      {plan === 'free' && (
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-          <TouchableOpacity
-            style={[styles.upgradeCard, styles.upgradePro]}
-            disabled={!!upgrading}
-            onPress={() => upgrade('pro')}
-          >
-            <Text style={styles.upgradeKicker}>PRO</Text>
-            <Text style={styles.upgradePrice}>$4.99 / mo</Text>
-            <Text style={styles.upgradeBlurb}>
-              Unlimited items, 200 auto-fills/mo, 20 closet scans/mo.
-            </Text>
-            <Text style={styles.upgradeCTA}>
-              {upgrading === 'pro' ? 'Opening…' : 'Upgrade'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.upgradeCard, styles.upgradeLifetime]}
-            disabled={!!upgrading}
-            onPress={() => upgrade('lifetime')}
-          >
-            <Text style={[styles.upgradeKicker, { color: '#fff' }]}>LIFETIME</Text>
-            <Text style={[styles.upgradePrice, { color: '#fff' }]}>$99 once</Text>
-            <Text style={[styles.upgradeBlurb, { color: 'rgba(255,255,255,0.8)' }]}>
-              Everything in Pro, forever.
-            </Text>
-            <Text style={[styles.upgradeCTA, { color: '#fff' }]}>
-              {upgrading === 'lifetime' ? 'Opening…' : 'Buy'}
-            </Text>
-          </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.subLink}
+        onPress={() => router.push('/subscription')}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.subLinkTitle}>
+            {plan === 'free' ? 'Try Pro free for 14 days' : 'Manage subscription'}
+          </Text>
+          <Text style={styles.subLinkSub}>
+            {plan === 'free'
+              ? 'No card required to start. Cancel anytime.'
+              : 'View billing, change payment method, or cancel.'}
+          </Text>
         </View>
-      )}
+        <Ionicons name="chevron-forward" size={18} color="#707070" />
+      </TouchableOpacity>
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Account</Text>
@@ -413,12 +379,23 @@ const styles = StyleSheet.create({
   },
   barFill: { height: 4 },
   upgradeCard: {
-    flex: 1,
     borderRadius: 14,
-    padding: 14,
+    padding: 16,
   },
   upgradePro: { backgroundColor: '#ffd6b5' },
-  upgradeLifetime: { backgroundColor: '#1a1a1a' },
+  subLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e5e0',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 14,
+    gap: 12,
+  },
+  subLinkTitle: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
+  subLinkSub: { fontSize: 12, color: '#707070', marginTop: 2 },
   upgradeKicker: {
     fontSize: 10,
     fontWeight: '700',

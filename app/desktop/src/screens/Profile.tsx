@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ai } from '../lib/ai';
 import {
@@ -21,7 +22,6 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
-  const [upgrading, setUpgrading] = useState<Plan | null>(null);
 
   const plan: Plan = effectivePlan(profile ?? {});
 
@@ -81,24 +81,7 @@ export default function Profile() {
     setBusy(false);
   }
 
-  async function upgrade(target: 'pro' | 'lifetime') {
-    setUpgrading(target);
-    try {
-      const { url } = await ai.startCheckout({
-        plan: target,
-        return_url: window.location.origin + '/profile',
-      });
-      window.open(url, '_blank');
-    } catch (e) {
-      setInfo(
-        e instanceof Error
-          ? `Upgrade unavailable: ${e.message}`
-          : 'Upgrade unavailable.'
-      );
-    } finally {
-      setUpgrading(null);
-    }
-  }
+  // Plan upgrades / cancellation live on /subscription now.
 
   if (loading) return <div className="page muted">Loading…</div>;
 
@@ -185,67 +168,36 @@ export default function Profile() {
         )}
       </div>
 
-      {plan === 'free' && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 12,
-            maxWidth: 480,
-            marginBottom: 20,
-          }}
-        >
-          <button
-            onClick={() => upgrade('pro')}
-            disabled={!!upgrading}
-            style={{
-              background: 'linear-gradient(90deg, #e8b4b8, #ffd6b5)',
-              borderRadius: 12,
-              padding: 16,
-              textAlign: 'left',
-              border: 'none',
-              cursor: 'pointer',
-              opacity: upgrading ? 0.5 : 1,
-            }}
-          >
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>PRO</div>
-            <div style={{ fontSize: 22, fontWeight: 700, margin: '4px 0' }}>
-              $4.99 <span style={{ fontSize: 12, fontWeight: 400 }}>/ mo</span>
-            </div>
-            <div style={{ fontSize: 11, color: '#444' }}>
-              Unlimited items, 200 auto-fills/mo, 20 closet scans/mo.
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8 }}>
-              {upgrading === 'pro' ? 'Opening…' : '→ Upgrade'}
-            </div>
-          </button>
-          <button
-            onClick={() => upgrade('lifetime')}
-            disabled={!!upgrading}
-            style={{
-              background: '#1a1a1a',
-              color: '#fff',
-              borderRadius: 12,
-              padding: 16,
-              textAlign: 'left',
-              border: 'none',
-              cursor: 'pointer',
-              opacity: upgrading ? 0.5 : 1,
-            }}
-          >
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>LIFETIME</div>
-            <div style={{ fontSize: 22, fontWeight: 700, margin: '4px 0' }}>
-              $99 <span style={{ fontSize: 12, fontWeight: 400 }}>once</span>
-            </div>
-            <div style={{ fontSize: 11, opacity: 0.8 }}>
-              Everything in Pro, forever.
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 700, marginTop: 8 }}>
-              {upgrading === 'lifetime' ? 'Opening…' : '→ Buy'}
-            </div>
-          </button>
-        </div>
-      )}
+      <Link
+        to="/subscription"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: '#fff',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '14px 18px',
+          textDecoration: 'none',
+          color: '#1a1a1a',
+          maxWidth: 480,
+          marginBottom: 20,
+        }}
+      >
+        <span>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>
+            {plan === 'free'
+              ? 'Try Pro free for 14 days'
+              : 'Manage subscription'}
+          </div>
+          <div style={{ fontSize: 12, color: '#707070', marginTop: 2 }}>
+            {plan === 'free'
+              ? 'No card required to start. Cancel anytime.'
+              : 'View billing, change payment method, or cancel.'}
+          </div>
+        </span>
+        <span style={{ color: '#707070' }}>→</span>
+      </Link>
 
       <div className="section-card">
         <h2>Account</h2>

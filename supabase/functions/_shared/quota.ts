@@ -95,12 +95,7 @@ export async function enforceQuota(
   if (planErr) {
     console.warn('effective_plan failed; defaulting to free.', planErr);
   }
-  const plan: Plan =
-    (planRow as Plan | null) === 'lifetime'
-      ? 'lifetime'
-      : (planRow as Plan | null) === 'pro'
-        ? 'pro'
-        : 'free';
+  const plan: Plan = (planRow as Plan | null) === 'pro' ? 'pro' : 'free';
 
   // 3. Look up the limit for this feature on this plan.
   const cfg = PLAN_LIMITS[plan][feature];

@@ -28,9 +28,8 @@ export interface Profile {
   created_at: string;
   updated_at: string;
   // Plan / billing fields (added by schema-3-plans.sql).
-  plan?: 'free' | 'pro' | 'lifetime' | null;
+  plan?: 'free' | 'pro' | null;
   plan_period_end?: string | null;
-  lifetime_purchased_at?: string | null;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
 }
@@ -180,7 +179,7 @@ export interface FindItemImageResult {
 
 // Returned by the get-usage edge function.
 export interface UsageReport {
-  plan: 'free' | 'pro' | 'lifetime';
+  plan: 'free' | 'pro';
   item_count: number;
   item_limit: number;
   features: Record<
@@ -199,7 +198,7 @@ export interface UsageReport {
 export interface QuotaError {
   type: 'quota_exceeded' | 'auth_required' | 'config_error';
   feature?: string;
-  plan?: 'free' | 'pro' | 'lifetime';
+  plan?: 'free' | 'pro';
   limit?: number;
   used?: number;
   period?: string;

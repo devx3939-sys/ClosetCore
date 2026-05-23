@@ -6,7 +6,7 @@ export default function TermsPage() {
   return (
     <LegalShell title="Terms of Service" updated="April 28, 2026">
       <p>
-        This is a placeholder terms-of-service document for the ClosetCoreCore.
+        This is a placeholder terms-of-service document for ClosetCore.
         Replace with the actual document reviewed by your legal counsel before
         launching publicly.
       </p>
@@ -27,9 +27,10 @@ export default function TermsPage() {
 
       <h2>Subscriptions</h2>
       <p>
-        Premium subscriptions renew monthly until canceled. Lifetime purchases
-        are one-time. Cancel anytime in your account settings; cancellation
-        takes effect at the end of the current billing period.
+        Pro subscriptions are billed monthly at $4.99 and renew until canceled.
+        Cancel anytime in your account settings; cancellation takes effect at
+        the end of the current billing period and you keep Pro access until
+        then.
       </p>
 
       <h2>Service availability</h2>

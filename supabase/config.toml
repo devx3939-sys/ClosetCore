@@ -1,0 +1,9 @@
+# Supabase project config. Only the settings we override from defaults live here.
+# Generated values like project_id come from `supabase link` (in .temp/).
+
+# Stripe sends webhook deliveries without an Authorization JWT header — they
+# use the `stripe-signature` header for auth instead. Without this, Supabase
+# rejects every webhook delivery at the gateway with 401 UNAUTHORIZED_NO_AUTH_HEADER
+# before the function ever runs.
+[functions.stripe-webhook]
+verify_jwt = false

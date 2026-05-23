@@ -17,7 +17,7 @@ const QUESTIONS = [
   },
   {
     q: 'How many items can I add for free?',
-    a: 'Up to 30 items on the free tier, plus 10 AI auto-fills and 1 closet scan per month. Pro ($4.99/mo) unlocks unlimited items and 200 AI calls per feature, per month. Lifetime ($99 once) gets you Pro forever.',
+    a: 'Up to 30 items on the free tier, plus 10 AI auto-fills and 1 closet scan per month. Pro ($4.99/mo) unlocks unlimited items and up to 200 AI calls per feature per month. Cancel anytime.',
   },
   {
     q: 'How does color analysis work?',

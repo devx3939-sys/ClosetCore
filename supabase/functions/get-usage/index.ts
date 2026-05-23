@@ -66,12 +66,7 @@ Deno.serve(async (req) => {
     const { data: planRow } = await adminClient.rpc('effective_plan', {
       p_user_id: userId,
     });
-    const plan: Plan =
-      (planRow as Plan | null) === 'lifetime'
-        ? 'lifetime'
-        : (planRow as Plan | null) === 'pro'
-          ? 'pro'
-          : 'free';
+    const plan: Plan = (planRow as Plan | null) === 'pro' ? 'pro' : 'free';
 
     const { data: rows } = await adminClient
       .from('usage_counters')

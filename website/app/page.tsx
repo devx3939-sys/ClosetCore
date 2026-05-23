@@ -259,7 +259,8 @@ export default function Home() {
             </h2>
             <p className="mt-5 text-cream-2/80 max-w-md mx-auto">
               Free forever for 30 items, with AI auto-fill and one full color
-              analysis. Sign up in 10 seconds — no credit card.
+              analysis. Upgrade to Pro for $4.99/mo when you need more — cancel
+              anytime. Sign up in 10 seconds, no credit card.
             </p>
             <Link
               href="/signup"

@@ -86,7 +86,7 @@ const groups = [
       },
       {
         title: 'Real plan limits',
-        body: '30 items free with one full color analysis. Pro ($4.99/mo) unlocks unlimited items and 200 AI calls/feature/month. Lifetime ($99 once) for forever.',
+        body: '30 items free with one full color analysis. Pro ($4.99/mo) unlocks unlimited items and 200 AI calls/feature/month. Cancel anytime.',
       },
     ],
   },

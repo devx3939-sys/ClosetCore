@@ -1,63 +1,62 @@
 # Stripe integration — button-by-button walkthrough
 
-This guide takes you from "no Stripe account" to "users can actually pay for Pro and Lifetime." The plan infrastructure (database columns, quota enforcement, client UI, edge function stubs) is already in place — you just have to swap the stubs for real Stripe calls and tell Stripe where to send webhooks.
+This guide takes you from "Stripe Sandbox account created" to "users can actually pay for Pro with a 14-day free trial." It assumes you've already created a Stripe account and you're sitting in the **ClosetCore Sandbox** (Stripe's newer name for what used to be Test Mode — same thing, free, fake cards).
 
-Total time: ~45 minutes the first time. If you've shipped Stripe before, ~15.
+Total time: ~30 minutes the first time.
 
-> Test in Stripe **test mode** first. The dashboard has a toggle in the top-right. Test mode uses fake cards (`4242 4242 4242 4242`) and costs $0. You can run through this entire guide in test mode without spending anything, then flip to live mode when you're ready to take real money.
+> **Sandbox vs Live.** Sandbox = pretend money, fake cards, no business verification. Live = real money, real cards, requires identity + bank verification. We do everything in Sandbox first, then flip to Live in Part 7. **You can ignore the "Verify your business" prompt in the setup guide** until you're ready to go live — sandbox doesn't need it.
 
 ---
 
-## Part 1 — Stripe dashboard setup
+## What gets built
 
-### Step 1. Create a Stripe account
+A standard Stripe subscription with a **14-day free trial, no card required to start**.
 
-1. Go to **https://stripe.com**
-2. Click **Start now** (top right)
-3. Enter email + full name + password → **Create account**
-4. Verify the email Stripe sends
-5. You'll land in the Stripe Dashboard. Top-right corner: confirm the **Test mode** toggle is ON (it'll glow). We'll stay in test mode for the entire guide until step 14.
+- User clicks "Try Pro free for 14 days" in the app
+- Stripe Checkout opens (no card collection — they just confirm)
+- They're immediately on Pro with `plan_period_end = trial end`
+- 13 days in, Stripe sends a reminder email asking for a card
+- If they add a card and don't cancel → auto-charges $4.99 at trial end and continues monthly
+- If they cancel during trial or after → revert to Free at period end
 
-### Step 2. Create the Pro Monthly product
+The same code handles all of it via three webhook events.
 
-1. Left sidebar → **Catalog → Product catalog**
-2. Top-right: **+ Create product**
+---
+
+## Part 1 — Stripe dashboard setup (in Sandbox)
+
+You're already in the ClosetCore sandbox. The left sidebar shows **Home / Balances / Transactions / Customers / Product catalog** and a Shortcuts section with **Subscriptions**.
+
+### Step 1. Create the Pro Monthly product
+
+1. Left sidebar → **Product catalog**
+2. Top-right: **+ Add product**
 3. Fill in:
    - **Name:** `ClosetCore Pro`
-   - **Description (optional):** `Pro plan with unlimited closet items and full AI features.`
+   - **Description:** `Unlimited closet items and full AI features. 14-day free trial included.`
    - **Image (optional):** drop your logo
 4. Under **Pricing**:
-   - **Pricing model:** Standard
+   - **Pricing model:** `Standard pricing`
    - **Price:** `4.99`
    - **Currency:** USD
-   - **Billing period:** Monthly
-5. Click **Add product** (bottom right)
-6. On the next screen, find the **Pricing** section and click the small `…` next to the price → **Copy price ID**. It looks like `price_1Q...`. **Save this.** This is your `STRIPE_PRICE_PRO_MONTHLY`.
+   - **Billing period:** **Monthly**
+   - Leave "Include tax in price" off for now
+5. Click **Add product**
+6. On the product detail page, find the **Pricing** section. Click the small `…` (three dots) next to the `$4.99 / month` row → **Copy price ID**. It looks like `price_1Q...`. **Save this** — it's your `STRIPE_PRICE_PRO_MONTHLY`.
 
-### Step 3. Create the Lifetime product
+> The 14-day trial is set in code, NOT in the Stripe dashboard. This is intentional — keeps the trial logic in one place and lets you change the length without touching Stripe.
 
-1. **+ Create product** again
-2. Fill in:
-   - **Name:** `ClosetCore Lifetime`
-   - **Description:** `One-time payment, lifetime access to all Pro features.`
-3. Under **Pricing**:
-   - **Pricing model:** Standard
-   - **Price:** `99.00`
-   - **Currency:** USD
-   - **Billing period:** **One time** (important — change from "Monthly")
-4. **Add product**
-5. Copy this price ID too. It's your `STRIPE_PRICE_LIFETIME`.
+### Step 2. Grab your sandbox API key
 
-### Step 4. Grab your secret API key
+1. Left sidebar → click **Developers** (bottom-left, looks like `>_`)
+2. **API keys** tab
+3. Find the **Secret key** row → click **Reveal sandbox key** (or "Reveal test key" — same thing)
+4. Copy the value — starts with `sk_test_...`
+5. **Save this** — it's your `STRIPE_SECRET_KEY`
 
-1. Left sidebar → **Developers → API keys**
-2. Under **Standard keys**, find **Secret key**. Click **Reveal test key**.
-3. Copy the value — it starts with `sk_test_...`.
-4. **Save this.** This is your `STRIPE_SECRET_KEY`.
+### Step 3. (skip until Part 5) Webhook signing secret
 
-### Step 5. (Skip until step 11) Webhook signing secret
-
-You'll register the webhook endpoint after the function is deployed. We'll come back here.
+You'll come back here after the webhook function is deployed.
 
 ---
 
@@ -70,7 +69,6 @@ cd "c:/Users/Xavier/Desktop/Closet App"
 
 supabase secrets set STRIPE_SECRET_KEY=sk_test_...
 supabase secrets set STRIPE_PRICE_PRO_MONTHLY=price_...
-supabase secrets set STRIPE_PRICE_LIFETIME=price_...
 ```
 
 Verify:
@@ -79,15 +77,15 @@ Verify:
 supabase secrets list
 ```
 
-You should see all three listed (values hidden).
+You should see both listed (values hidden).
 
-> Note: **don't** try to `supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...` — Supabase auto-injects that one into every edge function. The CLI rejects the `SUPABASE_` prefix.
+> **Don't** try to `supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...` — Supabase auto-injects that one. The CLI rejects the `SUPABASE_` prefix.
 
 ---
 
-## Part 3 — Implement `create-checkout-session`
+## Part 3 — Replace `create-checkout-session` with the real implementation
 
-The stub at [supabase/functions/create-checkout-session/index.ts](supabase/functions/create-checkout-session/index.ts) has TODO comments showing exactly what to add. Replace the file with the implementation below.
+Replace the entire contents of [supabase/functions/create-checkout-session/index.ts](supabase/functions/create-checkout-session/index.ts) with this:
 
 ```typescript
 // supabase/functions/create-checkout-session/index.ts
@@ -97,7 +95,6 @@ import { corsHeaders } from '../_shared/cors.ts';
 
 const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
 const PRO_PRICE = Deno.env.get('STRIPE_PRICE_PRO_MONTHLY') ?? '';
-const LIFETIME_PRICE = Deno.env.get('STRIPE_PRICE_LIFETIME') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -110,7 +107,7 @@ const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    if (!STRIPE_KEY || !PRO_PRICE || !LIFETIME_PRICE) {
+    if (!STRIPE_KEY || !PRO_PRICE) {
       return json(503, { error: 'Stripe not configured. See STRIPE.md.' });
     }
 
@@ -127,13 +124,8 @@ Deno.serve(async (req) => {
     const userEmail = u.user.email ?? '';
 
     // 2. Body
-    const { plan, return_url } = (await req.json()) as {
-      plan: 'pro' | 'lifetime';
-      return_url: string;
-    };
-    if (plan !== 'pro' && plan !== 'lifetime') {
-      return json(400, { error: 'plan must be pro or lifetime' });
-    }
+    const { return_url } = (await req.json()) as { return_url: string };
+    if (!return_url) return json(400, { error: 'return_url is required' });
 
     // 3. Resolve / create the Stripe customer
     const { data: profile } = await admin
@@ -154,17 +146,17 @@ Deno.serve(async (req) => {
         .eq('id', userId);
     }
 
-    // 4. Create the checkout session
+    // 4. Create the checkout session — 14-day trial, no card required
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      mode: plan === 'lifetime' ? 'payment' : 'subscription',
-      line_items: [
-        { price: plan === 'lifetime' ? LIFETIME_PRICE : PRO_PRICE, quantity: 1 },
-      ],
+      mode: 'subscription',
+      line_items: [{ price: PRO_PRICE, quantity: 1 }],
+      subscription_data: { trial_period_days: 14 },
+      payment_method_collection: 'if_required',
       success_url: `${return_url}?status=success`,
       cancel_url: `${return_url}?status=cancel`,
       client_reference_id: userId,
-      metadata: { user_id: userId, plan },
+      metadata: { user_id: userId },
     });
 
     return json(200, { url: session.url });
@@ -191,9 +183,9 @@ supabase functions deploy create-checkout-session
 
 ---
 
-## Part 4 — Implement `stripe-webhook`
+## Part 4 — Replace `stripe-webhook` with the real implementation
 
-Replace [supabase/functions/stripe-webhook/index.ts](supabase/functions/stripe-webhook/index.ts) with:
+Replace the entire contents of [supabase/functions/stripe-webhook/index.ts](supabase/functions/stripe-webhook/index.ts) with this:
 
 ```typescript
 // supabase/functions/stripe-webhook/index.ts
@@ -231,46 +223,39 @@ Deno.serve(async (req) => {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.user_id;
-        const plan = session.metadata?.plan;
-        if (!userId) break;
-
-        if (plan === 'lifetime' && session.mode === 'payment') {
-          await admin
-            .from('profiles')
-            .update({
-              plan: 'lifetime',
-              lifetime_purchased_at: new Date().toISOString(),
-              stripe_customer_id: String(session.customer ?? ''),
-            })
-            .eq('id', userId);
-        } else if (plan === 'pro' && session.mode === 'subscription') {
-          const sub = await stripe.subscriptions.retrieve(
-            String(session.subscription)
-          );
-          await admin
-            .from('profiles')
-            .update({
-              plan: 'pro',
-              plan_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-              stripe_customer_id: String(session.customer ?? ''),
-              stripe_subscription_id: sub.id,
-            })
-            .eq('id', userId);
-        }
-        break;
-      }
-      case 'customer.subscription.updated': {
-        const sub = event.data.object as Stripe.Subscription;
+        if (!userId || session.mode !== 'subscription') break;
+        const sub = await stripe.subscriptions.retrieve(
+          String(session.subscription)
+        );
+        // During trial, current_period_end IS the trial end date — perfect.
         await admin
           .from('profiles')
           .update({
-            plan: sub.status === 'active' || sub.status === 'trialing' ? 'pro' : 'free',
+            plan: 'pro',
+            plan_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+            stripe_customer_id: String(session.customer ?? ''),
+            stripe_subscription_id: sub.id,
+          })
+          .eq('id', userId);
+        break;
+      }
+      case 'customer.subscription.updated': {
+        // Fires on trial-end, renewal, payment method update, status change, etc.
+        const sub = event.data.object as Stripe.Subscription;
+        const isActive =
+          sub.status === 'active' ||
+          sub.status === 'trialing';
+        await admin
+          .from('profiles')
+          .update({
+            plan: isActive ? 'pro' : 'free',
             plan_period_end: new Date(sub.current_period_end * 1000).toISOString(),
           })
           .eq('stripe_subscription_id', sub.id);
         break;
       }
       case 'customer.subscription.deleted': {
+        // Fires on cancellation taking effect (after the period ends).
         const sub = event.data.object as Stripe.Subscription;
         await admin
           .from('profiles')
@@ -305,40 +290,36 @@ supabase functions deploy stripe-webhook
 
 ## Part 5 — Register the webhook in Stripe
 
-### Step 11. Find your function URL
+### Step 4. Add the endpoint
 
-Your webhook endpoint is:
-
-```
-https://peizhwbhihzjzudemlmk.supabase.co/functions/v1/stripe-webhook
-```
-
-(Replace `peizhwbhihzjzudemlmk` if your Supabase project ref is different — check `supabase/config.toml` or the Supabase dashboard URL.)
-
-### Step 12. Add the endpoint in Stripe
-
-1. Stripe Dashboard → **Developers → Webhooks**
-2. Top-right: **+ Add endpoint**
-3. **Endpoint URL:** paste the URL from above
-4. **Description (optional):** `ClosetCore — plan sync`
-5. Click **+ Select events**
-6. Search for and check ALL of:
+1. Stripe Dashboard → left sidebar → **Developers**
+2. **Webhooks** tab
+3. Top-right: **+ Add endpoint**
+4. **Endpoint URL:** paste this exactly:
+   ```
+   https://peizhwbhihzjzudemlmk.supabase.co/functions/v1/stripe-webhook
+   ```
+5. **Description (optional):** `ClosetCore — plan sync`
+6. **Events to listen to:** click **+ Select events**
+7. Search for and check ALL three:
    - `checkout.session.completed`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
-7. Click **Add events** → **Add endpoint**
+8. Click **Add events**
+9. **Add endpoint**
 
-### Step 13. Copy the signing secret
+### Step 5. Copy the signing secret
 
-1. On the endpoint detail page, click **Reveal** next to **Signing secret**
-2. Copy the value (starts with `whsec_...`)
-3. Set it in Supabase:
+1. On the endpoint detail page that just opened, look for **Signing secret**
+2. Click **Reveal**
+3. Copy (starts with `whsec_...`)
+4. Set it in Supabase:
 
 ```powershell
 supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
-4. Redeploy the webhook handler so it picks up the secret:
+5. Redeploy the webhook handler so it picks up the secret:
 
 ```powershell
 supabase functions deploy stripe-webhook
@@ -346,89 +327,113 @@ supabase functions deploy stripe-webhook
 
 ---
 
-## Part 6 — Test in Stripe test mode
+## Part 6 — Test the full flow in Sandbox
 
-### Step 14. Trigger a test purchase
+### Step 6. Sign in to the app as a fresh test user
 
-1. Open your website (`npm run dev` in `website/`)
-2. Sign in as a user that's currently on the Free plan
-3. Go to **Profile**
-4. Click **Upgrade to Pro**
-5. You should redirect to Stripe Checkout. Use the test card:
-   - Card: `4242 4242 4242 4242`
-   - Expiry: any future date (`12/30`)
-   - CVC: any 3 digits (`123`)
-   - ZIP: any 5 digits (`10001`)
-6. Click **Subscribe**
+1. Open your website (`npm run dev` in `website/` if running locally)
+2. Go to `/signup` and create a new test account (e.g. `test@yourdomain.com`)
+3. Go to **Profile** — confirm the Plan badge says "Free"
 
-### Step 15. Verify the webhook fired
+### Step 7. Click "Try Pro free for 14 days"
+
+1. You should redirect to Stripe Checkout
+2. Because the trial is `payment_method_collection: 'if_required'`, you'll see a confirmation screen **without** a card-entry field
+3. Click **Start trial** (or whatever the button is labeled)
+4. You'll be redirected back to your Profile page with `?status=success` in the URL
+
+### Step 8. Verify the webhook fired
 
 1. Stripe Dashboard → **Developers → Webhooks** → click your endpoint
-2. Scroll to **Webhook attempts**. You should see `checkout.session.completed` with a green checkmark and `200 OK`.
-3. If it failed: click the row to see the response body. Common issues:
-   - `Bad signature` → wrong `STRIPE_WEBHOOK_SECRET`
-   - `Could not check quota` → `SUPABASE_SERVICE_ROLE_KEY` not auto-injected (very rare)
+2. Scroll to the bottom and look at **Webhook attempts**
+3. You should see `checkout.session.completed` with a green checkmark and `200 OK` (within ~3 seconds of the checkout)
+4. If you see a red ✕: click the row to see the response body. Common issues:
+   - `Bad signature: ...` → wrong `STRIPE_WEBHOOK_SECRET` (re-copy from the endpoint detail page)
+   - `500: ...` → check Supabase logs: `supabase functions logs stripe-webhook --tail`
 
-### Step 16. Verify the upgrade landed in the database
+### Step 9. Verify the upgrade landed in the database
 
-In Supabase SQL Editor:
+In the Supabase SQL Editor:
 
 ```sql
-select id, email, plan, plan_period_end, stripe_customer_id
+select id, email, plan, plan_period_end, stripe_customer_id, stripe_subscription_id
   from profiles
- where email = 'your-test-email@example.com';
+ where email = 'test@yourdomain.com';
 ```
 
-`plan` should now be `pro`, `plan_period_end` ~30 days out, `stripe_customer_id` populated.
+- `plan` should be `pro`
+- `plan_period_end` should be ~14 days from now
+- Both Stripe IDs populated
 
-Reload the website's Profile page — the badge should flip from "Free" to "Pro" and the upgrade buttons should disappear.
+Reload the website Profile page — badge flips to "Pro", upgrade button disappears, usage panel shows Pro-tier limits.
 
-### Step 17. Test cancellation
+### Step 10. Simulate the trial ending (optional, but smart)
 
-1. Stripe Dashboard → **Customers** → find your test customer → **Subscriptions** tab → click the subscription → **Cancel subscription** → **Cancel immediately**
-2. Watch the webhook log — `customer.subscription.deleted` should fire and return 200
-3. Verify in SQL: `plan` is back to `free`, `stripe_subscription_id` is null
-4. Reload Profile → "Free" badge, upgrade buttons reappear
+In the Stripe Dashboard, the test cards work like this:
+- `4242 4242 4242 4242` — always succeeds (use this to simulate trial → paid)
+- `4000 0000 0000 9995` — declines (use this to test the failure path later)
 
-### Step 18. Test the lifetime path
+To test trial-to-paid right now without waiting 14 days:
 
-Same as Step 14 but click **Buy Lifetime**. After successful payment:
+1. Stripe Dashboard → **Customers** → find your test customer → **Subscriptions** → click the subscription
+2. Top-right `…` menu → **Update subscription**
+3. Set **Trial end** to "End now"
+4. Stripe will try to charge — since there's no card yet, the subscription status will become `past_due` or `unpaid`
+5. Your `customer.subscription.updated` webhook fires, and your handler will downgrade `plan` to `'free'` because the status isn't `active` or `trialing`
+6. Verify in the SQL editor
 
-- `plan` = `lifetime`
-- `lifetime_purchased_at` = now
-- The Profile UI shows the "Lifetime" badge
-- Cancellation logic doesn't apply (one-time payment)
+To test it the "happy path" way (trial converts cleanly to paid):
+
+1. In the same subscription detail page, click **Update payment method**
+2. Add card `4242 4242 4242 4242`
+3. Then end the trial now
+4. Stripe successfully charges, sends `invoice.paid` and `customer.subscription.updated`
+5. Your handler keeps `plan='pro'` and updates `plan_period_end` to ~30 days out
+
+### Step 11. Test cancellation
+
+1. Stripe Dashboard → the same subscription detail page
+2. **Cancel subscription** → **Cancel immediately** (vs. at-period-end)
+3. `customer.subscription.deleted` should fire and return 200
+4. SQL check: `plan = 'free'`, `stripe_subscription_id = null`
+5. Profile page reloads to "Free" badge, Upgrade button reappears
 
 ---
 
 ## Part 7 — Go live
 
-When you're confident in test mode:
+When you're confident everything works in Sandbox:
 
-### Step 19. Switch Stripe to live mode
+### Step 12. Verify your business
 
-1. Top-right of Stripe Dashboard: toggle **Test mode** OFF
-2. **You will need to recreate everything in live mode** — Stripe keeps test and live data fully separate. Repeat:
-   - Step 2 (Pro product, copy live price ID)
-   - Step 3 (Lifetime product, copy live price ID)
-   - Step 4 (live API key — `sk_live_...`)
-   - Step 12 (live webhook endpoint, same URL)
-   - Step 13 (live signing secret)
+Stripe requires this before they let you accept real money.
 
-### Step 20. Update the Supabase secrets
+1. Top-right of the dashboard, click **Switch to live account** (you saw this banner in Sandbox earlier)
+2. Stripe will walk you through the **Verify your business** form:
+   - Business type (individual is fine if you're a solo dev)
+   - Legal name, address, DOB
+   - Tax ID (SSN if individual in the US, EIN if you've registered an LLC)
+   - Bank account for payouts
+3. Submit. Approval is usually instant for individuals, can take a day or two if Stripe flags anything.
+
+### Step 13. Recreate the product + price in live mode
+
+Stripe keeps test and live data fully separate, so you have to do steps 1–2 again, this time in live mode:
+
+1. Toggle to **Live mode** (top-right)
+2. **Product catalog** → **+ Add product** → repeat Step 1 from this guide
+3. **Developers → API keys** → copy the **live** secret key (`sk_live_...`)
+4. **Developers → Webhooks** → repeat Step 4 from this guide (same URL, get a fresh live signing secret)
+
+### Step 14. Update the Supabase secrets to live values
 
 ```powershell
 supabase secrets set STRIPE_SECRET_KEY=sk_live_...
-supabase secrets set STRIPE_PRICE_PRO_MONTHLY=price_...
-supabase secrets set STRIPE_PRICE_LIFETIME=price_...
-supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...
+supabase secrets set STRIPE_PRICE_PRO_MONTHLY=price_...   # the LIVE price ID
+supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...      # the LIVE signing secret
 ```
 
-(No code change — the same edge functions work for test and live; the keys decide which environment.)
-
-### Step 21. Verify with one real $0.50 test
-
-Stripe charges a real card. Test with a small low-value subscription if you can — or just trust the test-mode flow and ship.
+No code change — the same edge functions work for both modes; the keys decide.
 
 You're live.
 
@@ -437,31 +442,76 @@ You're live.
 ## Common errors
 
 **Checkout opens but says "No such price"**
-You set `STRIPE_PRICE_PRO_MONTHLY` to a test-mode price ID but `STRIPE_SECRET_KEY` is a live key (or vice versa). Both must be from the same mode.
+You set `STRIPE_PRICE_PRO_MONTHLY` to a sandbox price ID but `STRIPE_SECRET_KEY` is a live key (or vice versa). Both must be from the same environment.
 
-**Webhook signature verification failing**
-The webhook secret was rotated or you copied the test-mode secret while sending live events. Re-copy from the dashboard endpoint detail page.
+**"Bad signature" in webhook logs**
+The webhook secret was rotated or you copied the sandbox secret while sending live events (or vice versa). Re-copy from the endpoint detail page.
 
 **User pays but `plan` doesn't update**
-1. Check the webhook log in Stripe → did it fire? Did it return 200?
-2. Check `supabase functions logs stripe-webhook --tail` while you replay the event.
-3. The most common cause is the user's profile row didn't have `stripe_customer_id` set when Stripe sent the event — verify the `metadata.user_id` was populated on the checkout session.
+1. Check the webhook log in Stripe → did the event fire? Did the response return 200?
+2. Tail Supabase logs: `supabase functions logs stripe-webhook --tail`
+3. Most common cause: `metadata.user_id` wasn't on the checkout session. The create-checkout-session code above sets it — verify it didn't get edited out.
 
-**"Could not connect to Stripe"**
-The Deno fetch from inside the edge function timed out reaching `api.stripe.com`. Usually transient — retry. If persistent, check Stripe's status page.
+**Trial ends but the user got charged immediately and is confused**
+That's actually correct — if they added a card during the trial, Stripe charges at trial end. The "no card required" config means they can _start_ without a card; if they want to keep the subscription past 14 days, they have to add one.
 
-**You want to give yourself Pro for free for testing**
-Don't bother going through Stripe — just run the SQL from [PLANS.md](PLANS.md):
+**You want to give yourself Pro for free without going through Stripe**
+Just run the SQL from [PLANS.md](PLANS.md):
 
 ```sql
 update profiles
-   set plan = 'lifetime',
-       lifetime_purchased_at = now()
+   set plan = 'pro',
+       plan_period_end = now() + interval '100 years'
  where id = (select id from auth.users where email = 'xavier.neil@yahoo.com');
 ```
 
 ---
 
-## What still works without Stripe
+## Part 8 — Customer Portal (cancellation, payment updates, invoices)
 
-If you decide not to ship paid plans, everything keeps working — every account is treated as Free, the upgrade buttons return a clear error, and you can manually grant Pro/Lifetime via SQL whenever you want. There's no rush.
+The app has a dedicated **Subscription** page on every client (web sidebar, desktop sidebar, mobile from Profile) where users can self-manage their subscription. The "Manage in Stripe" button on that page opens the **Stripe Customer Portal** — Stripe's hosted page for cancellation, trial cancellation, payment method updates, and invoice history.
+
+The portal needs a one-time configuration in Stripe before it works.
+
+### Step 18. Enable the Customer Portal in Stripe
+
+1. Stripe Dashboard → top-right gear icon → **Settings**
+2. Left sidebar → **Billing → Customer portal**
+3. The form shows what users can do in the portal. Recommended defaults:
+   - ✅ **Customers can cancel subscriptions** → enabled
+   - ✅ **Customers can update payment methods** → enabled
+   - ✅ **Customers can update their billing information** → enabled
+   - ✅ **Allow customers to view their invoice history** → enabled
+   - For cancellation: pick **"Cancel at end of billing period"** (so they keep Pro access through the period they already paid for)
+4. Scroll to bottom → **Save changes**
+
+You only do this once. The same settings apply to both sandbox and live mode (set them in both if you've already flipped to live).
+
+### Step 19. Deploy the new edge function
+
+```powershell
+cd "c:/Users/Xavier/Desktop/Closet App"
+supabase functions deploy create-portal-session
+```
+
+(No new secrets to set — it reuses `STRIPE_SECRET_KEY`.)
+
+### Step 20. Verify
+
+1. Sign in as a user who's on Pro
+2. Click the **Subscription** entry in the sidebar (web/desktop) or the "Manage subscription" row on Profile (mobile)
+3. Click **Manage in Stripe** — you should be redirected to Stripe's portal with the user's email and active subscription pre-filled
+4. Click **Cancel subscription** in the portal → you'll be returned to your app's Subscription page
+5. Within a few seconds the `customer.subscription.updated` webhook fires, and `plan_period_end` is set to the end of the current period. The Subscription page now shows "Access until [date]" with a note that the subscription has been canceled but stays active until then.
+6. When the period actually elapses, `customer.subscription.deleted` fires and the user becomes Free.
+
+---
+
+## What you can configure later without code changes
+
+These all live in the Stripe dashboard and require zero code change:
+
+- **Email receipts** — Settings → Emails → enable customer receipts
+- **Trial-ending reminder email** — Settings → Subscriptions and emails → "Send a reminder X days before the trial ends" (default: 3 days)
+- **Failed-payment retry schedule** — Settings → Subscriptions and emails → Smart Retries
+- **Customer Portal branding** — Settings → Billing → Customer portal → Branding tab → upload logo, set colors

@@ -1,4 +1,4 @@
--- Closet App — paid plans + usage tracking.
+-- ClosetCore — paid plans + usage tracking.
 -- Run this once in the Supabase SQL editor AFTER schema-2-ai.sql.
 -- Idempotent: safe to re-run.
 
@@ -7,12 +7,41 @@
 ------------------------------------------------------------------------------
 
 alter table profiles
-  add column if not exists plan text not null default 'free'
-    check (plan in ('free', 'pro', 'lifetime')),
+  add column if not exists plan text not null default 'free',
   add column if not exists plan_period_end timestamptz,
-  add column if not exists lifetime_purchased_at timestamptz,
   add column if not exists stripe_customer_id text,
   add column if not exists stripe_subscription_id text;
+
+-- Earlier versions of this schema had a 'lifetime' plan. Migrate any existing
+-- lifetime users to a perpetual Pro subscription (100-year expiry) so they
+-- don't lose access.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+      where table_name = 'profiles' and column_name = 'lifetime_purchased_at'
+  ) then
+    update profiles
+      set plan = 'pro',
+          plan_period_end = coalesce(plan_period_end, now() + interval '100 years')
+      where plan = 'lifetime' or lifetime_purchased_at is not null;
+    alter table profiles drop column lifetime_purchased_at;
+  end if;
+end$$;
+
+-- Tighten the plan check constraint to free/pro only. Use a do block so
+-- re-runs don't fail on the constraint already existing.
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+      where conname = 'profiles_plan_check'
+  ) then
+    alter table profiles drop constraint profiles_plan_check;
+  end if;
+  alter table profiles
+    add constraint profiles_plan_check check (plan in ('free', 'pro'));
+end$$;
 
 create index if not exists profiles_plan_idx on profiles(plan);
 create index if not exists profiles_stripe_customer_idx
@@ -20,7 +49,7 @@ create index if not exists profiles_stripe_customer_idx
 
 ------------------------------------------------------------------------------
 -- 2. Usage counters — one row per (user, feature, period_key)
--- period_key is 'YYYY-MM' for monthly limits, 'all' for lifetime limits.
+-- period_key is 'YYYY-MM' for monthly limits, 'all' for lifetime-of-account limits.
 ------------------------------------------------------------------------------
 
 create table if not exists usage_counters (
@@ -107,8 +136,6 @@ $$;
 grant execute on function check_and_increment_usage(uuid, text, text, bigint)
   to service_role;
 
--- Optional helper for clients to read their full usage in one round-trip.
--- Kept simple — the get-usage edge function does the plan-aware version.
 create or replace function get_my_usage()
 returns table (feature text, period_key text, count int)
 language sql
@@ -124,7 +151,7 @@ grant execute on function get_my_usage() to authenticated;
 
 ------------------------------------------------------------------------------
 -- 4. Closet item-count limit for Free plan
--- Trigger checks before insert. Pro/Lifetime: unlimited.
+-- Trigger checks before insert. Pro: unlimited.
 ------------------------------------------------------------------------------
 
 create or replace function enforce_item_limit()
@@ -162,7 +189,7 @@ create trigger trg_enforce_item_limit
 
 ------------------------------------------------------------------------------
 -- 5. Helper: which plan is currently effective?
--- Lifetime is forever. Pro requires plan_period_end > now(). Else 'free'.
+-- Pro requires plan = 'pro' AND (no expiry OR expiry in the future). Else 'free'.
 ------------------------------------------------------------------------------
 
 create or replace function effective_plan(p_user_id uuid)
@@ -173,7 +200,6 @@ set search_path = public
 stable
 as $$
   select case
-    when lifetime_purchased_at is not null then 'lifetime'
     when plan = 'pro' and (plan_period_end is null or plan_period_end > now()) then 'pro'
     else 'free'
   end

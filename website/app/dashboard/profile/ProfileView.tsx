@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { ExternalLink } from 'lucide-react';
 import { createClient } from '@/lib/supabase-client';
 import { ai } from '@/lib/ai';
 import {
@@ -30,7 +31,6 @@ export default function ProfileView({
   const [info, setInfo] = useState<string | null>(null);
   const [usage, setUsage] = useState<UsageReport | null>(null);
   const [usageErr, setUsageErr] = useState<string | null>(null);
-  const [upgrading, setUpgrading] = useState<Plan | null>(null);
 
   const plan: Plan = effectivePlan(profile ?? {});
 
@@ -62,24 +62,8 @@ export default function ProfileView({
     setBusy(false);
   }
 
-  async function upgrade(target: 'pro' | 'lifetime') {
-    setUpgrading(target);
-    try {
-      const { url } = await ai.startCheckout({
-        plan: target,
-        return_url: `${window.location.origin}/dashboard/profile`,
-      });
-      window.location.href = url;
-    } catch (e) {
-      setInfo(
-        e instanceof Error
-          ? `Upgrade unavailable: ${e.message}`
-          : 'Upgrade unavailable.'
-      );
-    } finally {
-      setUpgrading(null);
-    }
-  }
+  // Plan upgrades / cancellation now live on /dashboard/subscription. Keep the
+  // CTA here as a clear pointer rather than duplicating the checkout flow.
 
   return (
     <div>
@@ -156,44 +140,24 @@ export default function ProfileView({
         {usageErr && (
           <div className="text-sm text-red-700 mt-2">{usageErr}</div>
         )}
-        {plan === 'free' && (
-          <div className="grid sm:grid-cols-2 gap-3 mt-4">
-            <button
-              onClick={() => upgrade('pro')}
-              disabled={!!upgrading}
-              className="bg-gradient-to-r from-rose to-peach text-ink rounded-2xl p-5 text-left hover:opacity-90 disabled:opacity-50"
-            >
-              <div className="text-xs uppercase tracking-widest mb-1">Pro</div>
-              <div className="font-display text-2xl font-semibold mb-1">
-                $4.99 <span className="text-sm font-normal">/ month</span>
-              </div>
-              <div className="text-xs text-ink-soft">
-                Unlimited items, 200 auto-fills/mo, 20 closet scans/mo, AI suggestions, and more.
-              </div>
-              <div className="text-xs font-semibold mt-2 inline-flex items-center gap-1">
-                <Sparkles size={12} />
-                {upgrading === 'pro' ? 'Opening checkout…' : 'Upgrade to Pro'}
-              </div>
-            </button>
-            <button
-              onClick={() => upgrade('lifetime')}
-              disabled={!!upgrading}
-              className="bg-ink text-white rounded-2xl p-5 text-left hover:bg-black disabled:opacity-50"
-            >
-              <div className="text-xs uppercase tracking-widest mb-1">Lifetime</div>
-              <div className="font-display text-2xl font-semibold mb-1">
-                $99 <span className="text-sm font-normal">once</span>
-              </div>
-              <div className="text-xs opacity-80">
-                Everything in Pro, forever. No subscription.
-              </div>
-              <div className="text-xs font-semibold mt-2 inline-flex items-center gap-1">
-                <Sparkles size={12} />
-                {upgrading === 'lifetime' ? 'Opening checkout…' : 'Buy Lifetime'}
-              </div>
-            </button>
-          </div>
-        )}
+        <Link
+          href="/dashboard/subscription"
+          className="mt-4 inline-flex items-center justify-between w-full bg-white border border-line rounded-2xl px-5 py-4 hover:bg-cream-2 transition gap-3"
+        >
+          <span className="text-sm">
+            <span className="font-medium">
+              {plan === 'free'
+                ? 'Try Pro free for 14 days'
+                : 'Manage subscription'}
+            </span>
+            <span className="text-ink-soft block text-xs mt-0.5">
+              {plan === 'free'
+                ? 'No card required to start. Cancel anytime.'
+                : 'View billing, change payment method, or cancel.'}
+            </span>
+          </span>
+          <ExternalLink size={16} className="text-ink-soft shrink-0" />
+        </Link>
       </div>
 
       <div className="mt-10 max-w-lg">

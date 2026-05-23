@@ -17,12 +17,12 @@ export default function PricingPage() {
           Simple, fair pricing
         </h1>
         <p className="mt-5 text-lg text-ink-soft max-w-xl mx-auto">
-          Start free. Upgrade only when your closet outgrows it. Cancel anytime.
+          Start free. Upgrade when your closet outgrows it. Cancel anytime.
         </p>
       </section>
 
-      <section className="max-w-5xl mx-auto px-6 pb-12">
-        <div className="grid md:grid-cols-3 gap-5">
+      <section className="max-w-3xl mx-auto px-6 pb-12">
+        <div className="grid md:grid-cols-2 gap-5">
           <Tier
             name="Free"
             price="$0"
@@ -41,31 +41,19 @@ export default function PricingPage() {
           <Tier
             name="Pro"
             price="$4.99"
-            tagline="per month"
+            tagline="/ month after 14-day free trial"
             highlight
             features={[
+              '14 days free, no card required',
               'Unlimited closet items',
               '200 AI auto-fills / month',
               '20 closet scans / month',
               '100 AI outfit suggestions / month',
               '10 palette re-analyses / month',
               'Unlimited online photo lookup',
-              'Priority support',
+              'Cancel anytime, keep access until period end',
             ]}
-            cta="Start Pro"
-            ctaHref="/signup"
-          />
-          <Tier
-            name="Lifetime"
-            price="$99"
-            tagline="one-time"
-            features={[
-              'Everything in Pro, forever',
-              'No subscription, ever',
-              'Pay once, use on all devices',
-              'Priority feature requests',
-            ]}
-            cta="Buy lifetime"
+            cta="Start free trial"
             ctaHref="/signup"
           />
         </div>
@@ -76,15 +64,15 @@ export default function PricingPage() {
           Compare in detail
         </h2>
         <div className="bg-white border border-line rounded-2xl overflow-hidden mt-8">
-          <Row label="Closet items" free="30" prem="Unlimited" life="Unlimited" head />
-          <Row label="AI auto-fill from photo" free="10 / mo" prem="200 / mo" life="200 / mo" />
-          <Row label="Scan whole closet" free="1 / mo" prem="20 / mo" life="20 / mo" />
-          <Row label="AI outfit photo" free="5 / mo" prem="100 / mo" life="100 / mo" />
-          <Row label="AI outfit suggestions" free="5 / mo" prem="100 / mo" life="100 / mo" />
-          <Row label="AI palette analysis" free="1 lifetime" prem="10 / mo" life="10 / mo" />
-          <Row label="Find online photo" free="5 / mo" prem="Unlimited" life="Unlimited" />
-          <Row label="Priority support" free="—" prem="✓" life="✓" />
-          <Row label="Subscription" free="—" prem="$4.99/mo" life="One-time" />
+          <Row label="Closet items" free="30" pro="Unlimited" head />
+          <Row label="AI auto-fill from photo" free="10 / mo" pro="200 / mo" />
+          <Row label="Scan whole closet" free="1 / mo" pro="20 / mo" />
+          <Row label="AI outfit photo" free="5 / mo" pro="100 / mo" />
+          <Row label="AI outfit suggestions" free="5 / mo" pro="100 / mo" />
+          <Row label="AI palette analysis" free="1 lifetime" pro="10 / mo" />
+          <Row label="Find online photo" free="5 / mo" pro="Unlimited" />
+          <Row label="Priority support" free="—" pro="✓" />
+          <Row label="Subscription" free="—" pro="$4.99 / mo · cancel anytime" />
         </div>
       </section>
 
@@ -162,26 +150,23 @@ function Tier({
 function Row({
   label,
   free,
-  prem,
-  life,
+  pro,
   head,
 }: {
   label: string;
   free: string;
-  prem: string;
-  life: string;
+  pro: string;
   head?: boolean;
 }) {
   return (
     <div
-      className={`grid grid-cols-4 px-5 py-3 text-sm ${
+      className={`grid grid-cols-3 px-5 py-3 text-sm ${
         head ? 'bg-cream-2/40 font-medium' : 'border-t border-line/60'
       }`}
     >
       <div className="text-left">{label}</div>
       <div className="text-center text-ink-soft">{free}</div>
-      <div className="text-center font-medium">{prem}</div>
-      <div className="text-center text-ink-soft">{life}</div>
+      <div className="text-center font-medium">{pro}</div>
     </div>
   );
 }

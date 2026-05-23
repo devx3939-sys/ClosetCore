@@ -7,6 +7,7 @@ import AddItem from './screens/AddItem';
 import Outfits from './screens/Outfits';
 import Palette from './screens/Palette';
 import Profile from './screens/Profile';
+import Subscription from './screens/Subscription';
 
 function Shell({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
@@ -27,6 +28,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           {tab('/outfits', 'Outfits')}
           {tab('/palette', 'Color Palette')}
           {tab('/profile', 'Profile')}
+          {tab('/subscription', 'Subscription')}
           {tab('/add', 'Add Item')}
         </nav>
         <button
@@ -104,6 +106,14 @@ export default function App() {
           element={
             <Protected>
               <Profile />
+            </Protected>
+          }
+        />
+        <Route
+          path="/subscription"
+          element={
+            <Protected>
+              <Subscription />
             </Protected>
           }
         />
