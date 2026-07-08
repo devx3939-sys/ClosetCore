@@ -15,21 +15,25 @@ export default function SiteFooter() {
             flatter you.
           </p>
         </div>
+
         <Col title="Product">
           <FooterLink href="/features">Features</FooterLink>
           <FooterLink href="/pricing">Pricing</FooterLink>
-          <FooterLink href="/download">Download</FooterLink>
+          <FooterLink href="/download">Coming soon</FooterLink>
         </Col>
+
         <Col title="Company">
           <FooterLink href="/about">About</FooterLink>
           <FooterLink href="/privacy">Privacy</FooterLink>
           <FooterLink href="/terms">Terms</FooterLink>
         </Col>
+
         <Col title="Account">
           <FooterLink href="/login">Sign in</FooterLink>
           <FooterLink href="/signup">Create account</FooterLink>
         </Col>
       </div>
+
       <div className="border-t border-line/60 py-6 text-center text-xs text-ink-soft">
         © {new Date().getFullYear()} ClosetCore. Made with care for what hangs in
         your wardrobe.
