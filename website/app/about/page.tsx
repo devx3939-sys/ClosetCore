@@ -43,7 +43,7 @@ export default function AboutPage() {
 
         <div className="mt-16 grid sm:grid-cols-3 gap-4">
           <Stat label="Built in" value="Open" />
-          <Stat label="Native on" value="5 platforms" />
+          <Stat label="Available on" value="The web" />
           <Stat label="Your data" value="Yours" />
         </div>
 

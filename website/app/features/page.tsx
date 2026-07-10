@@ -77,8 +77,8 @@ const groups = [
     label: 'Cross-device',
     features: [
       {
-        title: 'Native everywhere',
-        body: 'Real installable apps for Windows and macOS (Tauri). Native iOS and Android (Expo). Plus a full web app. One account, every device.',
+        title: 'Web app live, native coming',
+        body: 'The full web app is available today in any modern browser. Native installable apps for Windows and macOS (Tauri) and native iOS and Android (Expo) are coming soon — one account, every device.',
       },
       {
         title: 'Instant sync',
@@ -104,8 +104,9 @@ export default function FeaturesPage() {
           Everything ClosetCore does
         </h1>
         <p className="mt-5 text-lg text-ink-soft max-w-xl mx-auto">
-          Everything shipping today on every platform. Calendar planning,
-          weather integration, and AR try-on are on the roadmap.
+          Everything below is live today in the web app. Native desktop and
+          mobile apps are coming soon; calendar planning, weather integration,
+          and AR try-on are on the roadmap.
         </p>
       </section>
 

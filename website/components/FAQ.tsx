@@ -13,7 +13,7 @@ const QUESTIONS = [
   },
   {
     q: 'Can I use ClosetCore on my Mac or Windows PC?',
-    a: 'Yes — there are native installers for Windows and macOS, plus iOS, Android, and a full web app. One account, every device.',
+    a: 'Yes — the web app runs in any modern browser on Mac, Windows, or any device, so you can use ClosetCore right now. Native desktop (Windows, macOS) and mobile (iOS, Android) apps are coming soon.',
   },
   {
     q: 'How many items can I add for free?',

@@ -14,47 +14,44 @@ export default function DownloadPage() {
           Download
         </div>
         <h1 className="font-display text-5xl md:text-6xl font-semibold tracking-tight">
-          ClosetCore, on every device
+          ClosetCore, in your browser
         </h1>
         <p className="mt-5 text-lg text-ink-soft max-w-xl mx-auto">
-          Native installers for Mac and Windows. App Store / Play Store for
-          mobile. Or just open it in your browser — same account, same closet.
+          The web app is live today — open it on any browser, no install needed.
+          Native Mac, Windows, iOS, and Android apps are on the way.
         </p>
       </section>
 
       <section className="max-w-5xl mx-auto px-6 pb-20 grid md:grid-cols-2 gap-5">
         <Card
-          eyebrow="Desktop"
+          eyebrow="Web · Available now"
+          title="Any browser"
+          body="No install. Open ClosetCore on Chrome, Safari, Firefox, or Edge — same account, same closet."
+          actions={[{ label: 'Open web app →', href: '/dashboard' }]}
+          accent="bg-gradient-to-br from-peach/20 to-sky/20"
+        />
+        <Card
+          eyebrow="Desktop · Coming soon"
           title="Mac &amp; Windows"
-          body="Real native installer. Fast, offline-friendly, integrated with your OS."
-          actions={[
-            { label: 'Download for macOS', href: '#mac' },
-            { label: 'Download for Windows', href: '#win' },
-          ]}
+          body="Real native installer. Fast, offline-friendly, integrated with your OS. In the works — use the web app in the meantime."
+          actions={[{ label: 'Get notified →', href: '/signup' }]}
+          comingSoon
           accent="bg-gradient-to-br from-rose/20 to-peach/20"
         />
         <Card
-          eyebrow="Mobile"
+          eyebrow="Mobile · Coming soon"
           title="iOS &amp; Android"
-          body="Take photos of new pieces the moment you buy them. The fastest way to grow your closet."
-          actions={[
-            { label: 'App Store', href: '#ios' },
-            { label: 'Play Store', href: '#android' },
-          ]}
+          body="Take photos of new pieces the moment you buy them. Launching soon on the App Store and Play Store."
+          actions={[{ label: 'Get notified →', href: '/signup' }]}
+          comingSoon
           accent="bg-gradient-to-br from-sky/20 to-sage/20"
-        />
-        <Card
-          eyebrow="Web"
-          title="Any browser"
-          body="No install. Open closet.app/dashboard on Chrome, Safari, Firefox, or Edge."
-          actions={[{ label: 'Open web app →', href: '/dashboard' }]}
-          accent="bg-gradient-to-br from-peach/20 to-sky/20"
         />
         <Card
           eyebrow="Coming soon"
           title="Apple Watch &amp; iPad widgets"
           body="A glance at today's outfit on your wrist. Tomorrow's plan on your home screen."
           actions={[{ label: 'Get notified →', href: '/signup' }]}
+          comingSoon
           accent="bg-gradient-to-br from-sage/20 to-rose/20"
         />
       </section>
@@ -88,16 +85,23 @@ function Card({
   body,
   actions,
   accent,
+  comingSoon,
 }: {
   eyebrow: string;
   title: string;
   body: string;
   actions: { label: string; href: string }[];
   accent: string;
+  comingSoon?: boolean;
 }) {
   return (
     <div className="relative bg-white border border-line rounded-2xl p-7 lift overflow-hidden">
       <div className={`absolute -top-20 -right-20 w-56 h-56 rounded-full blur-3xl ${accent}`} />
+      {comingSoon && (
+        <div className="absolute top-5 right-5 z-10 px-2.5 py-1 rounded-full bg-ink/5 border border-line text-[11px] uppercase tracking-wider text-ink-soft">
+          Soon
+        </div>
+      )}
       <div className="relative">
         <div className="text-xs uppercase tracking-widest text-ink-soft mb-3">
           {eyebrow}

@@ -26,8 +26,8 @@ export default function Home() {
             <p className="mt-6 text-lg text-ink-soft max-w-md leading-relaxed">
               Snap one wide photo of your closet — ClosetCore catalogs every
               piece automatically. Build outfits in seconds. Get colors that
-              actually flatter your skin tone. One account on Mac, Windows, iOS,
-              Android, and the web.
+              actually flatter your skin tone. Available now in any browser —
+              native Mac, Windows, iOS, and Android apps coming soon.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -37,15 +37,15 @@ export default function Home() {
                 Start free →
               </Link>
               <Link
-                href="/download"
+                href="/dashboard"
                 className="px-6 py-3.5 rounded-full border border-line bg-white/60 backdrop-blur hover:bg-white transition"
               >
-                Download apps
+                Open web app
               </Link>
             </div>
             <div className="mt-8 flex items-center gap-6 text-sm text-ink-soft">
               <Stat n="30" l="items free" />
-              <Stat n="5" l="platforms" />
+              <Stat n="Web" l="available now" />
               <Stat n="AI" l="powered" />
             </div>
           </div>
@@ -172,36 +172,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="max-w-6xl mx-auto px-6 py-24">
-        <div className="text-center max-w-2xl mx-auto mb-14">
-          <div className="text-xs uppercase tracking-widest text-ink-soft mb-3">
-            Loved by people who
-          </div>
-          <h2 className="font-display text-4xl md:text-5xl font-semibold tracking-tight">
-            Stopped overbuying. Started outfitting.
-          </h2>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-5">
-          <Quote
-            text="The closet scan did 80% of the cataloging in 30 seconds. I added 47 items from one wide-angle photo. Wild."
-            name="Maya R."
-            role="Marketing lead"
-          />
-          <Quote
-            text="The selfie palette analysis told me I'd been wearing the wrong reds my whole life. Switched to muted earth tones — strangers compliment me weekly."
-            name="Tomás L."
-            role="Software engineer"
-          />
-          <Quote
-            text="The desktop app is a real native app, not a web wrapper. Fast, and my closet syncs to my phone the moment I add something."
-            name="Priya S."
-            role="Architect"
-          />
-        </div>
-      </section>
-
       {/* Platforms */}
       <section className="border-y border-line/60 bg-white/50">
         <div className="max-w-6xl mx-auto px-6 py-24">
@@ -215,19 +185,19 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 max-w-4xl mx-auto">
-            <Platform name="Windows" sub="Native installer" />
-            <Platform name="macOS" sub=".dmg + Apple Silicon" />
-            <Platform name="iOS" sub="iPhone + iPad" />
-            <Platform name="Android" sub="Phones + tablets" />
-            <Platform name="Web" sub="Any modern browser" />
+            <Platform name="Web" sub="Available now" available />
+            <Platform name="Windows" sub="Coming soon" />
+            <Platform name="macOS" sub="Coming soon" />
+            <Platform name="iOS" sub="Coming soon" />
+            <Platform name="Android" sub="Coming soon" />
           </div>
 
           <div className="text-center mt-12">
             <Link
-              href="/download"
+              href="/dashboard"
               className="inline-block px-6 py-3 rounded-full bg-ink text-white hover:bg-black transition"
             >
-              Download for your device →
+              Open the web app →
             </Link>
           </div>
         </div>
@@ -343,34 +313,27 @@ function SeasonCard({ name, colors }: { name: string; colors: string[] }) {
   );
 }
 
-function Quote({
-  text,
+function Platform({
   name,
-  role,
+  sub,
+  available,
 }: {
-  text: string;
   name: string;
-  role: string;
+  sub: string;
+  available?: boolean;
 }) {
   return (
-    <figure className="bg-white border border-line rounded-2xl p-7 lift">
-      <div className="text-rose text-3xl font-display leading-none mb-3">
-        “
-      </div>
-      <blockquote className="text-ink leading-relaxed">{text}</blockquote>
-      <figcaption className="mt-5 text-sm">
-        <div className="font-medium">{name}</div>
-        <div className="text-ink-soft">{role}</div>
-      </figcaption>
-    </figure>
-  );
-}
-
-function Platform({ name, sub }: { name: string; sub: string }) {
-  return (
-    <div className="bg-white border border-line rounded-2xl p-5 text-center lift">
+    <div
+      className={`rounded-2xl p-5 text-center lift border ${
+        available
+          ? 'bg-white border-sage/60 ring-1 ring-sage/30'
+          : 'bg-white/60 border-line'
+      }`}
+    >
       <div className="font-display text-xl mb-1">{name}</div>
-      <div className="text-xs text-ink-soft">{sub}</div>
+      <div className={`text-xs ${available ? 'text-sage' : 'text-ink-soft'}`}>
+        {sub}
+      </div>
     </div>
   );
 }

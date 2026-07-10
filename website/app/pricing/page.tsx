@@ -33,7 +33,7 @@ export default function PricingPage() {
               '1 closet scan / month',
               '5 AI outfit suggestions / month',
               '1 AI palette analysis (lifetime)',
-              'Web + mobile + desktop',
+              'Web app now · mobile & desktop soon',
             ]}
             cta="Get started"
             ctaHref="/signup"

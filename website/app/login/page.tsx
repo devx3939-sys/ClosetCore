@@ -85,9 +85,9 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-rose/20 via-transparent to-peach/20" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-cream text-center max-w-sm px-6">
           <div className="font-display text-4xl font-semibold leading-tight mb-4">
-            "I stopped buying things I already own."
+            Your whole wardrobe, in one place.
           </div>
-          <div className="text-cream-2/60 text-sm">— Maya R., ClosetCore user since week one</div>
+          <div className="text-cream-2/60 text-sm">Catalog every piece. Build outfits in seconds. Find your colors.</div>
         </div>
         <div className="absolute bottom-10 left-10 right-10 grid grid-cols-6 gap-2">
           {['#FFB6A3', '#A4C2D7', '#A0522D', '#000080', '#FFD27D', '#5a6f4d'].map(
